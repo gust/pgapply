@@ -1,0 +1,16 @@
+{
+    "name": "pgdeploy",
+    "version": "0.1.0",
+    "description": "automated Postgres deployment from Git",
+    "bin": "output/main.js",
+    "scripts": {
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "UNLICENSED",
+    "private": true,
+    "devDependencies": {
+        "typescript": "^2.0.3"
+    }
+}
