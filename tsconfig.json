@@ -4,7 +4,8 @@
         "target": "es5",
         "noImplicitAny": true,
         "sourceMap": false,
-        "outDir": "output"
+        "outDir": "output",
+        "strictNullChecks": true
     },
     "include": [
         "src/**/*.ts"
