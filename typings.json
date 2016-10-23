@@ -1,0 +1,5 @@
+{
+  "globalDependencies": {
+    "pg-promise": "github:vitaly-t/pg-promise#a79eb4bade0493e1edfb03600f5bd73ade8e6f49"
+  }
+}
