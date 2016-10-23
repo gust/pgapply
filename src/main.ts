@@ -47,12 +47,9 @@ function main():Promise<any> {
                             }
                         });
                 }).then(function(iid:string) {
-                    console.log('got iid: "', iid, '"');
                     instance_id = iid;
-                    // poll socket for readability
+                    // retrieve docker host:port
                     return new Promise(function(resolve, reject) {
-                        // start docker image of PG_VERSION
-                        // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
                         const child = execFile('docker',
                             ['port', instance_id, '5432/tcp'],
                             {},
@@ -66,7 +63,7 @@ function main():Promise<any> {
                             });
                     });
                 }).then(function(host_port:string) {
-                    console.log('host_port', host_port)
+                    // poll socket for readability
                     let [host, port] = host_port.split(':');
                     if (host == '0.0.0.0') {
                         host = 'localhost';
@@ -79,17 +76,53 @@ function main():Promise<any> {
                         password: 'password',
                         application_name: 'deploy'
                     });
-                    let attempt_connect = function():Promise<void> {
+                    let attempt_connect = function(depth = 0):Promise<void> {
                         return db.query('select 1;')
                         .catch(function(err:Error) {
-                            return attempt_connect();
+                            // TODO: only retry if err is ECONNRESET
+                            // TODO: add a delay before trying again
+                            if (depth < 20000) {
+                                return attempt_connect(depth + 1);
+                            } else {
+                                throw err;
+                            }
                         });
                     }
                     return attempt_connect();
+                }).then(function() {
+                    // get file(s?) from GIT
+                    // dump into pg
+                }).then(function() {
+                    // shut down docker image
+                    return new Promise(function(resolve, reject) {
+                        const child = execFile('docker',
+                            ['stop', instance_id],
+                            {},
+                            function(err: Error, stdout:string, stderr:string) {
+                                if (err) {
+                                    console.error(stderr);
+                                    reject(err);
+                                } else {
+                                    resolve(stdout.trim());
+                                }
+                            });
+                    });
+                }).then(function() {
+                    // remove the instance
+                    return new Promise(function(resolve, reject) {
+                        const child = execFile('docker',
+                            ['rm', instance_id],
+                            {},
+                            function(err: Error, stdout:string, stderr:string) {
+                                if (err) {
+                                    console.error(stderr);
+                                    reject(err);
+                                } else {
+                                    resolve(stdout.trim());
+                                }
+                            });
+                    });
                 });
-                // get file(s?) from GIT
-                // dump into pg
-                // shut down docker image
             });
         default:
             console.log('did not recognize:', process.argv[0]);
