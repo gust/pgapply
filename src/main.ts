@@ -2,6 +2,7 @@
 
 import * as pgPromise from 'pg-promise';
 import {execFile} from 'child_process';
+const Git = require('nodegit');
 
 const pgp = pgPromise({});
 
@@ -32,6 +33,7 @@ function main():Promise<any> {
         case 'build-db':
             console.log('building current DB from ', db_file_location);
             let instance_id:string;
+            let repo:any; // Git.Repository object
             return new Promise(function(resolve, reject) {
                 // start docker image of PG_VERSION
                 // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
@@ -91,6 +93,22 @@ function main():Promise<any> {
                 return attempt_connect();
             }).then(function() {
                 // get file(s?) from GIT
+                return Git.Repository.open('.')
+            }).then(function(_repo) {
+                repo = _repo;
+                return repo.getCurrentBranch();
+            }).then(function(branch) {
+                return repo.getBranchCommit(branch);
+            }).then(function(commit) {
+                console.log(commit.message());
+                return commit.getTree();
+            }).then(function(tree) {
+                return tree.entries();
+            }).then(function(entries) {
+                entries.forEach(function(ent:any) { // type is Git.TreeEntry
+                    console.log(ent.name());
+                });
+            }).then(function() {
                 // dump into pg
             }).then(function() {
                 // shut down docker image

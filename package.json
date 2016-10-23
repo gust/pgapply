@@ -18,6 +18,7 @@
     "typings": "^1.4.0"
   },
   "dependencies": {
+    "nodegit": "^0.16.0",
     "pg-promise": "^5.3.4"
   }
 }
