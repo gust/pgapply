@@ -20,7 +20,8 @@ const db_file_location = 'test/db'
 const PG_VERSION = '9.2' // oldest version still in support
 
 function main():Promise<any> {
-    switch (process.argv[2]) {
+    let command = process.argv[2];
+    switch (command) {
         case 'install':
             console.log('installing');
             return db.query('CREATE SCHEMA deploy;').then(function() {
@@ -123,9 +124,10 @@ function main():Promise<any> {
                 });
             });
         default:
-            console.log('did not recognize:', process.argv[0]);
+            console.log('did not recognize:', command);
             console.log('valid actions are:\n' +
-            'install: install into a running postgres instance');
+            'install: install into a running postgres instance\n' +
+            'build-db: test build the current db\n');
             return Promise.resolve();
     }
 }
@@ -137,6 +139,5 @@ function shutdown() {
 main().catch(function(err: Error) {
     console.error(err);
 }).then(function() {
-    console.log('success');
     shutdown();
 })
