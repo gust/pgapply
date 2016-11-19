@@ -17,7 +17,7 @@ const default_db = {
 
 const db = pgp(default_db);
 
-const DB_FILE_LOCATION = 'test/db';
+const DB_FILE_LOCATION = 'test/db/';
 const PG_VERSION = '9.2'; // oldest version still in support
 
 function main(): Promise<any> {
@@ -38,7 +38,7 @@ function main(): Promise<any> {
                 // start docker image of PG_VERSION
                 // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
                 execFile('docker',
-                    ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', 'postgres:9.2'],
+                    ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', 'postgres:' + PG_VERSION],
                     {},
                     (err: Error, stdout: string, stderr: string) => {
                         if (err) {
@@ -101,15 +101,26 @@ function main(): Promise<any> {
                 return repo.getBranchCommit(branch);
             }).then((commit) => {
                 console.log(commit.message());
-                return commit.getTree();
-            }).then((tree) => {
-                return tree.entries();
-            }).then((entries) => {
-                entries.forEach((ent: any) => { // type is Git.TreeEntry
-                    console.log(ent.name());
-                });
-            }).then(() => {
+                return commit.getEntry(DB_FILE_LOCATION);
+            }).then((entry) => {
                 // dump into pg
+                if (entry.isTree()) {
+                    return entry.getTree().then((tree: any) => {
+                        return Promise.all(tree.entries()
+                        .filter((entry: any) => entry.isBlob())
+                        .map((entry: any) => {
+                            return entry.getBlob().then((blob: any) => {
+                                console.log(blob.toString());
+                            });
+                        }));
+                    });
+                } else {
+                    return entry.getBlob().then((blob: any) => {
+                        console.log(blob.toString());
+                    });
+                }
+            }).catch((err) => {
+                console.log(err);
             }).then(() => {
                 // shut down docker image
                 return new Promise((resolve, reject) => {
