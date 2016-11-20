@@ -6,17 +6,6 @@ const Git = require('nodegit');
 
 const pgp = pgPromise({});
 
-const default_db = {
-    host: 'localhost',
-    port: 5432,
-    database: 'postgres',
-    user: 'postgres',
-    password: 'password',
-    application_name: 'deploy'
-};
-
-const db = pgp(default_db);
-
 const DB_FILE_LOCATION = 'test/db/';
 const PG_VERSION = '9.2'; // oldest version still in support
 
@@ -25,7 +14,15 @@ function main(): Promise<any> {
     switch (command) {
         case 'install':
             console.log('installing');
-            return db.query('CREATE SCHEMA deploy;').then(() => {
+            const default_db = pgp({
+                host: 'localhost',
+                port: 5432,
+                database: 'postgres',
+                user: 'postgres',
+                password: 'password',
+                application_name: 'deploy'
+            });
+            return default_db.query('CREATE SCHEMA deploy;').then(() => {
                 console.log('complete');
             }).catch((err: Error) => {
                 console.log(err);
@@ -34,6 +31,7 @@ function main(): Promise<any> {
             console.log('building current DB from ', DB_FILE_LOCATION);
             let instance_id: string;
             let repo: any; // Git.Repository object
+            let db: pgPromise.IDatabase<any>;
             return new Promise((resolve, reject) => {
                 // start docker image of PG_VERSION
                 // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
@@ -70,7 +68,7 @@ function main(): Promise<any> {
                 if (host === '0.0.0.0') {
                     host = 'localhost';
                 }
-                const db = pgp({
+                db = pgp({
                     host,
                     port: parseFloat(port),
                     database: 'postgres',
@@ -103,22 +101,28 @@ function main(): Promise<any> {
                 console.log(commit.message());
                 return commit.getEntry(DB_FILE_LOCATION);
             }).then((entry) => {
-                // dump into pg
+                // get the blobs from provided location
                 if (entry.isTree()) {
                     return entry.getTree().then((tree: any) => {
                         return Promise.all(tree.entries()
                         .filter((entry: any) => entry.isBlob())
                         .map((entry: any) => {
-                            return entry.getBlob().then((blob: any) => {
-                                console.log(blob.toString());
-                            });
+                            return entry.getBlob();
                         }));
                     });
                 } else {
-                    return entry.getBlob().then((blob: any) => {
-                        console.log(blob.toString());
-                    });
+                    return Promise.all([entry.getBlob()]);
                 }
+            }).then((blobs: Array<any>) => {
+                // for each blob, send the contents to the db
+                return Promise.all(blobs.map((blob) => {
+                    console.log(blob.toString());
+                    return db.query(blob.toString());
+                }));
+            }).then(() => {
+                return db.func('hello_world');
+            }).then((res) => {
+                console.log(res);
             }).catch((err) => {
                 console.log(err);
             }).then(() => {
