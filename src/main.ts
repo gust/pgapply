@@ -101,7 +101,7 @@ function main(): Promise<any> {
                 console.log(commit.message());
                 return commit.getEntry(DB_FILE_LOCATION);
             }).then((entry) => {
-                // get the blobs from provided location
+                // get the entries from provided location
                 if (entry.isTree()) {
                     return entry.getTree().then((tree: any) => {
                         return Promise.all(tree.entries()
@@ -114,7 +114,15 @@ function main(): Promise<any> {
                     return Promise.all([entry.getBlob()]);
                 }
             }).then((blobs: Array<any>) => {
-                // for each blob, send the contents to the db
+                // Install triggers
+                // - need to pick a supported language that can set session variables
+                // - postgres docker images don't come with extension files though
+                // for each blob
+                // - start a transaction
+                // - set the filename
+                // - run the blob
+                // - close transaction
+                // pull list of affects from the DB
                 return Promise.all(blobs.map((blob) => {
                     console.log(blob.toString());
                     return db.query(blob.toString());
