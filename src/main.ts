@@ -6,8 +6,10 @@ const Git = require('nodegit');
 
 const pgp = pgPromise({});
 
+const monitoring_triggers = new pgp.QueryFile('../src/monitoring_triggers.sql');
+
 const DB_FILE_LOCATION = 'test/db/';
-const PG_VERSION = '9.2'; // oldest version still in support
+const PG_VERSION = '9.3'; // oldest version that supports event_triggers
 
 function main(): Promise<any> {
     let command = process.argv[2];
@@ -28,7 +30,7 @@ function main(): Promise<any> {
                 console.log(err);
             });
         case 'build-db':
-            console.log('building current DB from ', DB_FILE_LOCATION);
+            console.log('building current DB from', DB_FILE_LOCATION);
             let instance_id: string;
             let repo: any; // Git.Repository object
             let db: pgPromise.IDatabase<any>;
@@ -107,28 +109,33 @@ function main(): Promise<any> {
                         return Promise.all(tree.entries()
                         .filter((entry: any) => entry.isBlob())
                         .map((entry: any) => {
-                            return entry.getBlob();
+                            return entry;
                         }));
                     });
                 } else {
-                    return Promise.all([entry.getBlob()]);
+                    return Promise.all([entry]);
                 }
-            }).then((blobs: Array<any>) => {
+            }).then((entries: Array<any>) => {
                 // Install triggers
+                return db.query(monitoring_triggers).then(() => entries);
+            }).then((entries: Array<any>) => {
                 // - need to pick a supported language that can set session variables
                 // - postgres docker images don't come with extension files though
+                // - can try SET / SHOW of client name as filename
                 // for each blob
                 // - start a transaction
                 // - set the filename
                 // - run the blob
                 // - close transaction
                 // pull list of affects from the DB
-                return Promise.all(blobs.map((blob) => {
-                    console.log(blob.toString());
-                    return db.query(blob.toString());
+                return Promise.all(entries.map((entry) => {
+                    return entry.getBlob().then((blob: any) => {
+                        console.log(blob.toString());
+                        return db.query(blob.toString());
+                    });
                 }));
             }).then(() => {
-                return db.func('hello_world');
+                return db.query('select * from deploy.monitoring');
             }).then((res) => {
                 console.log(res);
             }).catch((err) => {
