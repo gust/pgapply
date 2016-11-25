@@ -129,9 +129,12 @@ function main(): Promise<any> {
                 // - close transaction
                 // pull list of affects from the DB
                 return Promise.all(entries.map((entry) => {
-                    return entry.getBlob().then((blob: any) => {
-                        console.log(blob.toString());
-                        return db.query(blob.toString());
+                    return db.task((con) => {
+                        return con.query('SET application_name TO $1', entry.name())
+                        .then(() => entry.getBlob())
+                        .then((blob: any) => {
+                            return con.query(blob.toString());
+                        });
                     });
                 }));
             }).then(() => {
