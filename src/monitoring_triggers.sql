@@ -13,11 +13,10 @@ create table deploy.monitoring (
 CREATE OR REPLACE FUNCTION deploy.monitor_proc() RETURNS EVENT_TRIGGER LANGUAGE PLPGSQL AS $$
 DECLARE
     filename varchar;
-    namespace varchar;
 BEGIN
     SELECT setting INTO filename FROM pg_catalog.pg_settings WHERE name = 'application_name';
     INSERT into deploy.monitoring (file, type, schema, name, op) VALUES
-        (filename, 'ddl_event', 'not sure', 'not sure', 'not sure');
+        (filename, TG_EVENT, 'not sure', 'not sure', TG_TAG);
 END $$;
 CREATE EVENT TRIGGER monitor_proc
     ON ddl_command_start
