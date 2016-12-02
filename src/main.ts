@@ -138,7 +138,7 @@ function main(): Promise<any> {
                     }));
                 }, Promise.resolve());
             }).then(() => {
-                return db.query('select * from deploy.monitoring');
+                return db.query("select * from deploy.monitoring where type != 'not sure'");
             }).then((res) => {
                 console.log(res);
             }).catch((err) => {
