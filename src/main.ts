@@ -128,15 +128,15 @@ function main(): Promise<any> {
                 // - run the blob
                 // - close transaction
                 // pull list of affects from the DB
-                return Promise.all(entries.map((entry) => {
-                    return db.task((con) => {
+                return entries.reduce((prior, entry) => {
+                    return prior.then(() => db.task((con) => {
                         return con.query('SET application_name TO $1', entry.name())
                         .then(() => entry.getBlob())
                         .then((blob: any) => {
                             return con.query(blob.toString());
                         });
-                    });
-                }));
+                    }));
+                }, Promise.resolve());
             }).then(() => {
                 return db.query('select * from deploy.monitoring');
             }).then((res) => {
