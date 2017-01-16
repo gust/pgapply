@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:server": "sudo docker run --rm -p5432:5432 -e POSTGRES_PASSWORD=password postgres:9.2"
+    "test:server": "sudo docker run --rm -p5432:5432 -e POSTGRES_PASSWORD=password postgres:9.3"
   },
   "author": "",
   "license": "UNLICENSED",
