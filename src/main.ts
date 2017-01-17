@@ -1,7 +1,7 @@
 /// <reference path='../typings/index' />
 
 import * as pgPromise from 'pg-promise';
-import {execFile} from 'child_process';
+import {DockerDatabase} from './docker_control';
 const Git = require('nodegit');
 
 const pgp = pgPromise({});
@@ -9,7 +9,6 @@ const pgp = pgPromise({});
 const monitoring_triggers = new pgp.QueryFile('../src/monitoring_triggers.sql');
 
 const DB_FILE_LOCATION = 'test/db/';
-const PG_VERSION = '9.3'; // oldest version that supports event_triggers
 
 function main(): Promise<any> {
     let command = process.argv[2];
@@ -31,67 +30,13 @@ function main(): Promise<any> {
             });
         case 'build-db':
             console.log('building current DB from', DB_FILE_LOCATION);
-            let instance_id: string;
             let repo: any; // Git.Repository object
             let db: pgPromise.IDatabase<any>;
-            return new Promise((resolve, reject) => {
-                // start docker image of PG_VERSION
-                // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
-                execFile('docker',
-                    ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', 'postgres:' + PG_VERSION],
-                    {},
-                    (err: Error, stdout: string, stderr: string) => {
-                        if (err) {
-                            console.error(stderr);
-                            reject(err);
-                        } else {
-                            resolve(stdout.trim());
-                        }
-                    });
-            }).then((iid: string) => {
-                instance_id = iid;
-                // retrieve docker host:port
-                return new Promise((resolve, reject) => {
-                    execFile('docker',
-                        ['port', instance_id, '5432/tcp'],
-                        {},
-                        (err: Error, stdout: string, stderr: string) => {
-                            if (err) {
-                                console.error(stderr);
-                                reject(err);
-                            } else {
-                                resolve(stdout.trim());
-                            }
-                        });
-                });
-            }).then((host_port: string) => {
-                // poll socket for readability
-                let [host, port] = host_port.split(':');
-                if (host === '0.0.0.0') {
-                    host = 'localhost';
-                }
-                db = pgp({
-                    host,
-                    port: parseFloat(port),
-                    database: 'postgres',
-                    user: 'postgres',
-                    password: 'password',
-                    application_name: 'deploy'
-                });
-                let attempt_connect = (depth = 0): Promise<void> => {
-                    return db.query('select 1;')
-                    .catch((err: Error) => {
-                        // TODO: only retry if err is ECONNRESET
-                        // TODO: add a delay before trying again
-                        if (depth < 20000) {
-                            return attempt_connect(depth + 1);
-                        } else {
-                            throw err;
-                        }
-                    });
-                };
-                return attempt_connect();
-            }).then(() => {
+            const dockerDB = new DockerDatabase();
+            return dockerDB.init()
+            .then(() => dockerDB.getDBConnection())
+            .then((db_) => {
+                db = db_;
                 // get file(s?) from GIT
                 return Git.Repository.open('.');
             }).then((_repo) => {
@@ -143,37 +88,7 @@ function main(): Promise<any> {
                 console.log(res);
             }).catch((err) => {
                 console.log(err);
-            }).then(() => {
-                // shut down docker image
-                return new Promise((resolve, reject) => {
-                    execFile('docker',
-                        ['stop', instance_id],
-                        {},
-                        (err: Error, stdout: string, stderr: string) => {
-                            if (err) {
-                                console.error(stderr);
-                                reject(err);
-                            } else {
-                                resolve(stdout.trim());
-                            }
-                        });
-                });
-            }).then(() => {
-                // remove the instance
-                return new Promise((resolve, reject) => {
-                    execFile('docker',
-                        ['rm', instance_id],
-                        {},
-                        (err: Error, stdout: string, stderr: string) => {
-                            if (err) {
-                                console.error(stderr);
-                                reject(err);
-                            } else {
-                                resolve(stdout.trim());
-                            }
-                        });
-                });
-            });
+            }).then(() => dockerDB.destroy());
         default:
             console.log('did not recognize:', command);
             console.log('valid actions are:\n' +

@@ -5,7 +5,7 @@
   "bin": "output/main.js",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsc && jasmine",
     "test:server": "sudo docker run --rm -p5432:5432 -e POSTGRES_PASSWORD=password postgres:9.3"
   },
   "author": "",
@@ -14,6 +14,7 @@
   "devDependencies": {
     "@types/es6-promise": "0.0.32",
     "@types/node": "^4.0.30",
+    "jasmine": "^2.5.3",
     "typescript": "~2.1.1",
     "typings": "^1.4.0"
   },
