@@ -5,8 +5,8 @@
   "bin": "build/main.js",
   "scripts": {
     "prepublish": "npm run build",
-    "build": "webpack && sed -i '1i#!/usr/bin/env node' build/main.js",
-    "test": "tsc && jasmine",
+    "build": "typings install && webpack && sed -i '1i#!/usr/bin/env node' build/main.js",
+    "test": "typings install && tsc && jasmine",
     "test:server": "sudo docker run --rm -p5432:5432 -e POSTGRES_PASSWORD=password postgres:9.3"
   },
   "author": "",
