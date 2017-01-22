@@ -6,7 +6,7 @@ const Git = require('nodegit');
 
 const pgp = pgPromise({});
 
-const monitoring_triggers = new pgp.QueryFile('../src/monitoring_triggers.sql');
+const monitoring_triggers = require('../sql/monitoring_triggers.sql');
 
 const DB_FILE_LOCATION = 'test/db/';
 
