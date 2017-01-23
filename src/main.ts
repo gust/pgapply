@@ -8,7 +8,86 @@ const pgp = pgPromise({});
 
 const monitoring_triggers = require('../sql/monitoring_triggers.sql');
 
-const DB_FILE_LOCATION = 'test/db/';
+const DB_FILE_LOCATION: string = process.env.DBFILE ? process.env.DBFILE : 'test/db/';
+const SUPERUSER_SETUP_SCRIPT: string = process.env.SETUPSCRIPT;
+const USER_DB: string = process.env.DBDATABASE;
+const USER_NAME: string = process.env.DBUSER;
+const USER_PASS: string = process.env.DBPASS;
+
+type GITBlob = {
+    toString: () => string
+}
+
+type GITTree = {
+    entries: () => Array<GITTreeEntry>
+}
+
+type GITTreeEntry = {
+    getBlob: () => Promise<GITBlob>
+    getTree: () => Promise<GITTree>
+    isTree: () => boolean
+    name: () => string
+    path: () => string
+}
+
+function getSqlFiles(commit: any, path: string): Promise<Array<GITTreeEntry>> {
+    return commit.getEntry(path).then((entry: GITTreeEntry) => {
+        // get the entries from provided location
+        let subEntries: Promise<Array<Array<GITTreeEntry>>>;
+        if (entry.isTree()) {
+            subEntries = entry.getTree()
+            .then((tree) => {
+                return Promise.all(tree.entries().map((entry) => getSqlFiles(commit, entry.path())));
+            });
+        } else {
+            subEntries = entry.getBlob().then((blob) => {
+                const lines = blob.toString().split('\n').filter(line => {
+                    return line.length > 0 && line.substr(0, 2) !== '--';
+                });
+                if (lines[0].substr(0, 2) === '\\i') {
+                    return Promise.all(
+                        lines.map((line) => line.split(' ')[1])
+                            .map((filepath) => getSqlFiles(commit, filepath))
+                    );
+                } else {
+                    return Promise.all([[entry]]);
+                }
+            });
+        }
+        return subEntries.then((nestedEntryList: Array<Array<GITTreeEntry>>) => {
+            return [].concat.apply(
+                [],
+                nestedEntryList
+            );
+        });
+    });
+}
+
+function installFile(db: pgPromise.IDatabase<any>, commit: any, path: string, monitorInstall: boolean = true) {
+    return getSqlFiles(commit, path).then((entries: Array<GITTreeEntry>) => {
+        // Install triggers
+        if (monitorInstall) {
+            return db.query(monitoring_triggers).then(() => entries);
+        } else {
+            return entries;
+        }
+    }).then((entries) => {
+        return entries.reduce((prior, entry) => {
+            return prior.then(() => db.task((con) => {
+                console.log('loading file:', entry.path());
+                return con.query('SET application_name TO $1', entry.name())
+                .then(() => entry.getBlob())
+                .then((blob: GITBlob) => {
+                    return con.query(blob.toString());
+                });
+            }));
+        }, Promise.resolve());
+    }).then(() => {
+        if (monitorInstall) {
+            return db.query("select * from deploy.monitoring where type != 'not sure'");
+        }
+    });
+}
 
 function main(): Promise<any> {
     let command = process.argv[2];
@@ -31,12 +110,10 @@ function main(): Promise<any> {
         case 'build-db':
             console.log('building current DB from', DB_FILE_LOCATION);
             let repo: any; // Git.Repository object
-            let db: pgPromise.IDatabase<any>;
             const dockerDB = new DockerDatabase();
+            let commit: any;
             return dockerDB.init()
-            .then(() => dockerDB.getDBConnection())
-            .then((db_) => {
-                db = db_;
+            .then(() => {
                 // get file(s?) from GIT
                 return Git.Repository.open('.');
             }).then((_repo) => {
@@ -44,46 +121,19 @@ function main(): Promise<any> {
                 return repo.getCurrentBranch();
             }).then((branch) => {
                 return repo.getBranchCommit(branch);
-            }).then((commit) => {
-                console.log(commit.message());
-                return commit.getEntry(DB_FILE_LOCATION);
-            }).then((entry) => {
-                // get the entries from provided location
-                if (entry.isTree()) {
-                    return entry.getTree().then((tree: any) => {
-                        return Promise.all(tree.entries()
-                        .filter((entry: any) => entry.isBlob())
-                        .map((entry: any) => {
-                            return entry;
-                        }));
-                    });
-                } else {
-                    return Promise.all([entry]);
-                }
-            }).then((entries: Array<any>) => {
-                // Install triggers
-                return db.query(monitoring_triggers).then(() => entries);
-            }).then((entries: Array<any>) => {
-                // - need to pick a supported language that can set session variables
-                // - postgres docker images don't come with extension files though
-                // - can try SET / SHOW of client name as filename
-                // for each blob
-                // - start a transaction
-                // - set the filename
-                // - run the blob
-                // - close transaction
-                // pull list of affects from the DB
-                return entries.reduce((prior, entry) => {
-                    return prior.then(() => db.task((con) => {
-                        return con.query('SET application_name TO $1', entry.name())
-                        .then(() => entry.getBlob())
-                        .then((blob: any) => {
-                            return con.query(blob.toString());
-                        });
-                    }));
-                }, Promise.resolve());
+            }).then((_c) => {
+                commit = _c;
+                return dockerDB.getDBConnection();
+            }).then((db) => {
+                return installFile(db, commit, SUPERUSER_SETUP_SCRIPT, false);
             }).then(() => {
-                return db.query("select * from deploy.monitoring where type != 'not sure'");
+                return dockerDB.getDBConnection({
+                    database: USER_DB,
+                    user: USER_NAME,
+                    password: USER_PASS
+                });
+            }).then((db) => {
+                return installFile(db, commit, DB_FILE_LOCATION, true);
             }).then((res) => {
                 console.log(res);
             }).catch((err) => {

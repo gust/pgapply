@@ -3,7 +3,6 @@ import * as pgPromise from 'pg-promise';
 
 const pgp = pgPromise({});
 
-
 const PG_VERSION = '9.3'; // oldest version that supports event_triggers
 
 export class DockerDatabase {
@@ -54,14 +53,14 @@ export class DockerDatabase {
         });
     }
 
-    getDBConnection() {
+    getDBConnection(conn = {database: 'postgres', user: 'postgres', password: 'password'}) {
         // poll socket for readability
         const db = pgp({
             host: this.host,
             port: this.port,
-            database: 'postgres',
-            user: 'postgres',
-            password: 'password',
+            database: conn.database,
+            user: conn.user,
+            password: conn.password,
             application_name: 'deploy'
         });
         let attempt_connect = (depth = 0): Promise<void> => {
