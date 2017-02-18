@@ -1,4 +1,5 @@
 /// <reference path='../typings/index' />
+require('dotenv').config({path: '.deployenv'});
 
 import * as pgPromise from 'pg-promise';
 import {DockerDatabase} from './docker_control';
