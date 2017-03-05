@@ -1,25 +1,21 @@
 import * as pgPromise from 'pg-promise';
+import * as Git from 'nodegit';
 
 const monitoring_triggers = require('../sql/monitoring_triggers.sql');
 
-type GITBlob = {
-  toString: () => string
-};
+export function getMostRecentCommit() {
+  let repo: GITRepository;
+  return Git.Repository.open('.')
+  .then((_repo) => {
+    repo = _repo;
+    return repo.getCurrentBranch();
+  }).then((branch) => {
+    return repo.getBranchCommit(branch);
+  });
+}
 
-type GITTree = {
-  entries: () => Array<GITTreeEntry>
-};
-
-type GITTreeEntry = {
-  getBlob: () => Promise<GITBlob>
-  getTree: () => Promise<GITTree>
-  isTree: () => boolean
-  name: () => string
-  path: () => string
-};
-
-function getSqlFiles(commit: any, path: string): Promise<Array<GITTreeEntry>> {
-  return commit.getEntry(path).then((entry: GITTreeEntry) => {
+function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITTreeEntry>> {
+  return commit.getEntry(path).then((entry) => {
     // get the entries from provided location
     let subEntries: Promise<Array<Array<GITTreeEntry>>>;
     if (entry.isTree()) {
@@ -42,7 +38,7 @@ function getSqlFiles(commit: any, path: string): Promise<Array<GITTreeEntry>> {
         }
       });
     }
-    return subEntries.then((nestedEntryList: Array<Array<GITTreeEntry>>) => {
+    return subEntries.then((nestedEntryList) => {
       return [].concat.apply(
         [],
         nestedEntryList
@@ -51,8 +47,8 @@ function getSqlFiles(commit: any, path: string): Promise<Array<GITTreeEntry>> {
   });
 }
 
-export function installFile(db: pgPromise.IDatabase<any>, commit: any, path: string, monitorInstall: boolean = true) {
-  return getSqlFiles(commit, path).then((entries: Array<GITTreeEntry>) => {
+export function installFile(db: pgPromise.IDatabase<any>, commit: GITCommit, path: string, monitorInstall: boolean = true) {
+  return getSqlFiles(commit, path).then((entries) => {
     // Install triggers
     if (monitorInstall) {
       return db.query(monitoring_triggers).then(() => entries);
