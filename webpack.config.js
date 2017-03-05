@@ -22,5 +22,6 @@ module.exports = {
                 loader: 'raw-loader'
             }
         ]
-    }
+    },
+    plugins: []
 }
