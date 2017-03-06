@@ -52,6 +52,12 @@ export function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITT
       });
       return res;
     });
+  }).catch(err => {
+    if (err.message.endsWith(' does not exist in the given tree')) {
+      throw new Error(`${path} does not exist in commit ${commit.sha()}?`);
+    } else {
+      throw err;
+    }
   });
 }
 

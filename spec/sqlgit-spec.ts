@@ -42,17 +42,17 @@ describe('sqlgit file reader', () => {
     getMostRecentCommit().then((commit) => {
       return getSqlFiles(commit, 'test/bad_files/not_a_real_file.sql');
     }).catch(err => {
-      lastError = String(err);
+      lastError = err.message;
     }).then(() => {
-      expect(lastError).toBe("Error: the path 'not_a_real_file.sql' does not exist in the given tree");
+      expect(lastError.indexOf("test/bad_files/not_a_real_file.sql does not exist in commit ")).toBe(0);
       lastError = '';
       return getMostRecentCommit();
     }).then((commit) => {
       return getSqlFiles(commit, 'test/bad_files/includes_bad_files.sql');
     }).catch(err => {
-      lastError = String(err);
+      lastError = err.message;
     }).then(() => {
-      expect(lastError).toBe("Error: the path 'not_a_real_file.sql' does not exist in the given tree");
+      expect(lastError.indexOf("test/db/not_a_real_file.sql does not exist in commit ")).toBe(0);
       lastError = '';
     }).catch(failFunc).then(() => {
       done();
