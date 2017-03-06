@@ -7,11 +7,6 @@ describe("DockerDatabase", () => {
   const runningDB = new DockerDatabase();
   let originalTimeout;
 
-  beforeEach(function() {
-    originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
-  });
-
   it('can be inited', (done) => {
     expect(runningDB instanceof DockerDatabase).toBe(true);
     expect(runningDB.instanceId).toBeUndefined();
@@ -23,7 +18,7 @@ describe("DockerDatabase", () => {
       expect(runningDB.port).toBeTruthy();
       done();
     });
-  });
+  }, 30000);
 
   it('can be connected to', (done) => {
     runningDB.getDBConnection().then((db) => {
@@ -32,15 +27,11 @@ describe("DockerDatabase", () => {
       expect(res.one).toBe(1);
       done();
     });
-  });
+  }, 30000);
 
   it('can be stopped', (done) => {
     runningDB.destroy().then(() => {
       done();
-    })
-  });
-
-  afterEach(() => {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
-  });
+    });
+  }, 30000);
 });
