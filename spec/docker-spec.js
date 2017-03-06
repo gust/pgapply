@@ -1,6 +1,6 @@
 'use strict';
 
-const docker = require('../output/docker_control.js');
+const docker = require('../src/docker_control.ts');
 const DockerDatabase = docker.DockerDatabase;
 
 describe("DockerDatabase", () => {
