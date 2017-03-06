@@ -14,6 +14,10 @@ export function getMostRecentCommit() {
   });
 }
 
+const isIncludeLine = (line: string) => {
+  return line.substr(0, 2) === '\\i';
+};
+
 export function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITTreeEntry>> {
   return commit.getEntry(path).then((entry) => {
     // get the entries from provided location
@@ -28,7 +32,10 @@ export function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITT
         const lines = blob.toString().split('\n').filter(line => {
           return line.length > 0 && line.substr(0, 2) !== '--';
         });
-        if (lines[0].substr(0, 2) === '\\i') {
+        if (lines.some(isIncludeLine)) {
+          if (!lines.every(isIncludeLine)) {
+            throw new Error(`${entry.path()} has mixed including files and regular sql`);
+          }
           return Promise.all(
             lines.map((line) => line.split(' ')[1])
               .map((filepath) => getSqlFiles(commit, filepath))
