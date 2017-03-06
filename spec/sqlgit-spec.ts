@@ -2,6 +2,11 @@
 
 import {getMostRecentCommit, getSqlFiles} from "../src/sqlgit";
 
+const failFunc = (err: any) => {
+  console.log(err);
+  expect('this test').toBe('working');
+};
+
 describe('sqlgit', () => {
   it('can read single files', (done) => {
     getMostRecentCommit().then((commit) => {
@@ -11,11 +16,23 @@ describe('sqlgit', () => {
       const entry = entries[0];
       expect(entry.isFile()).toBe(true);
       expect(entry.name()).toBe('functions.sql');
-    }).then(() => {
+    }).catch(failFunc).then(() => {
       done();
-    }).catch(err => {
-      console.log(err);
-      expect('this test').toBe('working');
+    });
+  });
+
+  it('can understand sql include files', (done) => {
+    getMostRecentCommit().then((commit) => {
+      return getSqlFiles(commit, 'test/db/includes_others.sql');
+    }).then((entries) => {
+      expect(entries.length).toBe(2);
+      entries.forEach((entry) => {
+        expect(entry.isFile()).toBe(true);
+      });
+      // entries should be in the original order
+      expect(entries[0].name()).toBe('functions.sql');
+      expect(entries[1].name()).toBe('views.sql');
+    }).catch(failFunc).then(() => {
       done();
     });
   });
