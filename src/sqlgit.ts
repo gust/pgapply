@@ -14,7 +14,7 @@ export function getMostRecentCommit() {
   });
 }
 
-function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITTreeEntry>> {
+export function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITTreeEntry>> {
   return commit.getEntry(path).then((entry) => {
     // get the entries from provided location
     let subEntries: Promise<Array<Array<GITTreeEntry>>>;
@@ -39,10 +39,11 @@ function getSqlFiles(commit: GITCommit, path: string): Promise<Array<GITTreeEntr
       });
     }
     return subEntries.then((nestedEntryList) => {
-      return [].concat.apply(
-        [],
-        nestedEntryList
-      );
+      let res: Array<GITTreeEntry> = [];
+      nestedEntryList.forEach((entryList) => {
+        res = res.concat(entryList);
+      });
+      return res;
     });
   });
 }

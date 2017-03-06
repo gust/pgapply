@@ -80,7 +80,7 @@ export class DockerDatabase {
 
   destroy(): Promise<void> {
     // shut down docker image
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       execFile('docker',
         ['stop', this.instanceId],
         {},
