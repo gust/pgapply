@@ -1,7 +1,7 @@
 {
-  "name": "pgdeploy",
+  "name": "pgapply",
   "version": "0.1.0",
-  "description": "automated Postgres deployment from Git",
+  "description": "a utility to make deploying your Postgres code easier",
   "bin": "build/main.js",
   "scripts": {
     "prepublish": "npm run build",
