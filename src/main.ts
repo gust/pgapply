@@ -9,9 +9,9 @@ const pgp = pgPromise({});
 
 const DB_FILE_LOCATION: string = process.env.DBFILE ? process.env.DBFILE : 'test/db/';
 const SUPERUSER_SETUP_SCRIPT: string = process.env.SETUPSCRIPT;
-const USER_DB: string = process.env.DBDATABASE;
-const USER_NAME: string = process.env.DBUSER;
-const USER_PASS: string = process.env.DBPASS;
+const USER_DB: string = process.env.DBDATABASE || 'postgres';
+const USER_NAME: string = process.env.DBUSER || 'postgres';
+const USER_PASS: string = process.env.DBPASS || 'password';
 
 function main(): Promise<void> {
   let command = process.argv[2];
@@ -32,7 +32,7 @@ function main(): Promise<void> {
         console.log(err);
       });
     case 'build-db':
-      console.log('building current DB from', DB_FILE_LOCATION);
+      console.log('building DB');
       const dockerDB = new DockerDatabase();
       let commit: GITCommit;
       return dockerDB.init()
@@ -42,14 +42,22 @@ function main(): Promise<void> {
         commit = _c;
         return dockerDB.getDBConnection();
       }).then((db) => {
+        if (USER_DB !== 'postgres') {
+          return db.query('CREATE DATABASE ' + USER_DB);
+        }
+      }).then(() => {
+        return dockerDB.getDBConnection(USER_DB);
+      }).then((db) => {
+        console.log('running setup script:', SUPERUSER_SETUP_SCRIPT);
         return installFile(db, commit, SUPERUSER_SETUP_SCRIPT, false);
       }).then(() => {
-        return dockerDB.getDBConnection({
-          database: USER_DB,
-          user: USER_NAME,
-          password: USER_PASS
-        });
+        return dockerDB.getDBConnection(
+          USER_DB,
+          USER_NAME,
+          USER_PASS
+        );
       }).then((db) => {
+        console.log('building from:', DB_FILE_LOCATION);
         return installFile(db, commit, DB_FILE_LOCATION, true);
       }).then((res) => {
         console.log(res);

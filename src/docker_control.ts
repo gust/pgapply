@@ -53,14 +53,14 @@ export class DockerDatabase {
     });
   }
 
-  getDBConnection(conn = {database: 'postgres', user: 'postgres', password: 'password'}) {
+  getDBConnection(database = 'postgres', user = 'postgres', password = 'password') {
     // poll socket for readability
     const db = pgp({
       host: this.host,
       port: this.port,
-      database: conn.database,
-      user: conn.user,
-      password: conn.password,
+      database: database,
+      user: user,
+      password: password,
       application_name: 'deploy'
     });
     let attempt_connect = (depth = 0): Promise<void> => {
