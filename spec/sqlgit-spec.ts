@@ -93,11 +93,18 @@ describe('sqlgit file reader', () => {
       done();
     });
   });
-});
 
-// TODO: tests
-// - reading a file, determining whether it's and include file or not
-// - throwing a sane error when a file doesn't exist
-// - throwing a sane error (file / line no) when a file is mixed include & not
-// - generate list of files in order
-// - ensure errors are failures
+  it('returns the list of files in order', (done) => {
+    getMostRecentCommit().then((commit) => {
+      return getSqlFiles(commit, 'test/nesting/start.sql');
+    }).then((entries) => {
+      expect(entries.length).toBeGreaterThan(1);
+      entries.forEach((entry, ix) => {
+        expect(entry.isFile()).toBe(true);
+        expect(entry.name()).toBe(String(ix + 1));
+      });
+    }).catch(failFunc).then(() => {
+      done();
+    });
+  });
+});
