@@ -38,6 +38,15 @@ DECLARE
     schema varchar;
 BEGIN
     -- TG_EVENT = 'ddl_command_end'
+    CASE split_part(TG_TAG, ' ', 1)
+      WHEN 'ALTER' THEN
+        RAISE NOTICE 'cannot handle ALTER statements yet';
+        RETURN;
+      WHEN 'DROP' THEN
+        RAISE NOTICE 'cannot handle DROP statements yet';
+        RETURN;
+      ELSE
+    END CASE;
     CASE split_part(TG_TAG, ' ', 2)
         WHEN 'FUNCTION' THEN
             type = 'function';
@@ -58,8 +67,12 @@ BEGIN
             schema = 'not sure';
     END CASE;
     SELECT setting INTO filename FROM pg_catalog.pg_settings pgs WHERE pgs.name = 'application_name';
-    INSERT into deploy.monitoring (file, type, schema, name, op) VALUES
-        (filename, type, schema, name, TG_TAG);
+    IF schema IS NULL OR name IS NULL THEN
+      RAISE NOTICE 'mystery % in % (%)', type, filename, TG_TAG;
+    ELSE
+      INSERT into deploy.monitoring (file, type, schema, name, op) VALUES
+          (filename, type, schema, name, TG_TAG);
+    END IF;
 END $$;
 CREATE EVENT TRIGGER ddl_monitor_end
     ON ddl_command_end

@@ -7,6 +7,8 @@ const failFunc = (err: any) => {
   expect('this test').toBe('working');
 };
 
+// TODO: test that syntax of monitoring triggers is valid / works
+
 describe('sqlgit file reader', () => {
   it('can read single files', (done) => {
     getMostRecentCommit().then((commit) => {

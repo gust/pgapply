@@ -12,6 +12,7 @@ const SUPERUSER_SETUP_SCRIPT: string = process.env.SETUPSCRIPT;
 const USER_DB: string = process.env.DBDATABASE || 'postgres';
 const USER_NAME: string = process.env.DBUSER || 'postgres';
 const USER_PASS: string = process.env.DBPASS || 'password';
+const PGIMAGE: string = process.env.PGIMAGE || 'postgres:9.3';
 
 function main(): Promise<void> {
   let command = process.argv[2];
@@ -33,7 +34,7 @@ function main(): Promise<void> {
       });
     case 'build-db':
       console.log('building DB');
-      const dockerDB = new DockerDatabase();
+      const dockerDB = new DockerDatabase(PGIMAGE);
       let commit: GITCommit;
       return dockerDB.init()
       .then(() => {

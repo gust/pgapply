@@ -3,14 +3,12 @@ import * as pgPromise from 'pg-promise';
 
 const pgp = pgPromise({});
 
-const PG_VERSION = '9.3'; // oldest version that supports event_triggers
-
 export class DockerDatabase {
   private instanceId: string;
   private host: string;
   private port: number;
 
-  constructor() {
+  constructor(private dockerImage = 'postgres:9.3') { // oldest version that supports event_triggers
   }
 
   init(): Promise<string> {
@@ -18,7 +16,7 @@ export class DockerDatabase {
       // start docker image of PG_VERSION
       // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
       execFile('docker',
-        ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', 'postgres:' + PG_VERSION],
+        ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', this.dockerImage],
         {},
         (err: Error, stdout: string, stderr: string) => {
           if (err) {
