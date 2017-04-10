@@ -3,6 +3,8 @@ import * as pgPromise from 'pg-promise';
 
 const pgp = pgPromise({});
 
+const postgres_password = 'password1';
+
 export class DockerDatabase {
   private instanceId: string;
   private host: string;
@@ -16,7 +18,7 @@ export class DockerDatabase {
       // start docker image of PG_VERSION
       // docker run -d -P -e POSTGRES_PASSWORD=password postgres:9.2
       execFile('docker',
-        ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=password', this.dockerImage],
+        ['run', '-d', '-P', '-e', 'POSTGRES_PASSWORD=' + postgres_password, this.dockerImage],
         {},
         (err: Error, stdout: string, stderr: string) => {
           if (err) {
@@ -51,7 +53,7 @@ export class DockerDatabase {
     });
   }
 
-  getDBConnection(database = 'postgres', user = 'postgres', password = 'password') {
+  getDBConnection(database = 'postgres', user = 'postgres', password = postgres_password) {
     // poll socket for readability
     const db = pgp({
       host: this.host,

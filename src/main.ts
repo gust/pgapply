@@ -8,10 +8,9 @@ import {getMostRecentCommit, installFile} from './sqlgit';
 const pgp = pgPromise({});
 
 const DB_FILE_LOCATION: string = process.env.DBFILE ? process.env.DBFILE : 'test/db/';
-const SUPERUSER_SETUP_SCRIPT: string = process.env.SETUPSCRIPT;
 const USER_DB: string = process.env.DBDATABASE || 'postgres';
 const USER_NAME: string = process.env.DBUSER || 'postgres';
-const USER_PASS: string = process.env.DBPASS || 'password';
+const USER_PASS: string = 'password2';
 const PGIMAGE: string = process.env.PGIMAGE || 'postgres:9.3';
 
 function main(): Promise<void> {
@@ -43,14 +42,15 @@ function main(): Promise<void> {
         commit = _c;
         return dockerDB.getDBConnection();
       }).then((db) => {
-        if (USER_DB !== 'postgres') {
-          return db.query('CREATE DATABASE ' + USER_DB);
+        if (USER_NAME !== 'postgres') {
+          return db.query("CREATE USER " + USER_NAME + " WITH ENCRYPTED PASSWORD '" + USER_PASS + "' SUPERUSER").then(() => {
+            return db;
+          });
         }
-      }).then(() => {
-        return dockerDB.getDBConnection(USER_DB);
       }).then((db) => {
-        console.log('running setup script:', SUPERUSER_SETUP_SCRIPT);
-        return installFile(db, commit, SUPERUSER_SETUP_SCRIPT, false);
+        if (USER_DB !== 'postgres') {
+          return db.query('CREATE DATABASE ' + USER_DB + " WITH OWNER = " + USER_NAME);
+        }
       }).then(() => {
         return dockerDB.getDBConnection(
           USER_DB,
