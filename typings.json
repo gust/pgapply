@@ -1,6 +1,6 @@
 {
   "globalDependencies": {
-    "jasmine": "registry:dt/jasmine#2.5.0+20170207112528",
+    "jasmine": "registry:dt/jasmine#2.5.2+20170317130948",
     "pg-promise": "github:vitaly-t/pg-promise#a79eb4bade0493e1edfb03600f5bd73ade8e6f49"
   }
 }
