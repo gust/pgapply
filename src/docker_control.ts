@@ -78,7 +78,7 @@ export class DockerDatabase {
     return attempt_connect().then(() => db);
   }
 
-  destroy(): Promise<void> {
+  destroy(rmContainer = true): Promise<void> {
     // shut down docker image
     return new Promise<void>((resolve, reject) => {
       execFile('docker',
@@ -94,19 +94,21 @@ export class DockerDatabase {
         });
     }).then(() => {
       // remove the instance
-      return new Promise<void>((resolve, reject) => {
-        execFile('docker',
-          ['rm', this.instanceId],
-          {},
-          (err: Error, stdout: string, stderr: string) => {
-            if (err) {
-              console.error(stderr);
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-      });
+      if (rmContainer) {
+        return new Promise<void>((resolve, reject) => {
+          execFile('docker',
+            ['rm', this.instanceId],
+            {},
+            (err: Error, stdout: string, stderr: string) => {
+              if (err) {
+                console.error(stderr);
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
+        });
+      }
     });
   }
 }

@@ -30,7 +30,9 @@ describe("DockerDatabase", () => {
   }, 30000);
 
   it('can be stopped', (done) => {
-    runningDB.destroy().then(() => {
+    // CircleCI doesn't allow removing containers
+    const rmContainer = !process.env.CIRCLECI;
+    runningDB.destroy(rmContainer).then(() => {
       done();
     });
   }, 30000);
