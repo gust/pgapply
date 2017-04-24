@@ -1,5 +1,3 @@
-'use strict';
-
 import {getMostRecentCommit, getSqlFiles} from "../src/sqlgit";
 
 const failFunc = (err: any) => {

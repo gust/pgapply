@@ -8,6 +8,7 @@
         "strictNullChecks": true
     },
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "custom_types/**/*.d.ts"
     ]
 }

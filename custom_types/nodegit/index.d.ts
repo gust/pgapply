@@ -26,8 +26,10 @@ type GITRepository = {
   getBranchCommit: (branch: GITBranch) => Promise<GITCommit>;
 };
 
-declare namespace nodegit {
-  let Repository: {
-    open: (path: string) => Promise<GITRepository>
-  };
+type Repository = {
+  open: (path: string) => Promise<GITRepository>
+};
+
+declare module 'nodegit' {
+  let Repository: Repository;
 }
