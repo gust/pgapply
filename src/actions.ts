@@ -8,7 +8,7 @@ export const actions = {
       return conn.query('CREATE SCHEMA deploy;');
     });
   },
-  buildDb: (image: string, userConnection: ConnectionDetails, fileLocation: string) => {
+  buildDb: (fileLocation: string, userConnection: (ConnectionDetails|undefined) = undefined, image: string = 'postgres:9.3') => {
     const dockerDB = new DockerDatabase(image);
     let commit: GITCommit;
     return dockerDB.init()
@@ -18,29 +18,30 @@ export const actions = {
       commit = _c;
       return getDBConnection(dockerDB.getConnectionDetails());
     }).then((db) => {
-      if (userConnection.user !== 'postgres') {
+      if (userConnection && userConnection.user !== 'postgres') {
         return db.query("CREATE USER " + userConnection.user + " WITH ENCRYPTED PASSWORD '" + userConnection.password + "' SUPERUSER").then(() => {
           return db;
         });
       }
     }).then((db) => {
-      if (userConnection.database !== 'postgres') {
+      if (userConnection && userConnection.database !== 'postgres') {
         return db.query('CREATE DATABASE ' + userConnection.database + " WITH OWNER = " + userConnection.user);
       }
     }).then(() => {
       const conn = dockerDB.getConnectionDetails();
-      conn.database = userConnection.database;
-      conn.user = userConnection.user;
-      conn.password = userConnection.password;
+      if (userConnection) {
+        conn.database = userConnection.database;
+        conn.user = userConnection.user;
+        conn.password = userConnection.password;
+      }
       return getDBConnection(conn);
     }).then((db) => {
       console.log('building from:', fileLocation);
       return installFile(db, commit, fileLocation, true);
     }).then((res) => {
-      console.log(res);
-    }).catch((err) => {
-      console.log(err);
-    }).then(() => dockerDB.destroy());
+      dockerDB.destroy();
+      return res;
+    });
   },
   help: () => {
     console.log('valid actions are:\n' +

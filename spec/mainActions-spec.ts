@@ -24,5 +24,22 @@ describe("users", () => {
     });
   }, 30000);
 
-  // TODO: test actions.buildDB
+  it("can determine the structure of a database from source", (done) => {
+    actions.buildDb('test/db/functions.sql').then((res) => {
+      expect(res.length).toBe(2);
+      expect(res.every((entry: any) => {
+        return entry.file === 'functions.sql' &&
+          entry.type === 'function' &&
+          entry.op === 'CREATE FUNCTION';
+      })).toBe(true);
+      expect(res.some((entry: any) => {
+        return entry.name === 'hello_world';
+      })).toBe(true);
+      expect(res.some((entry: any) => {
+        return entry.name === 'the_answer';
+      })).toBe(true);
+    }).catch(failFunc).then(() => {
+      done();
+    });
+  }, 30000);
 });

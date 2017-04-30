@@ -25,7 +25,11 @@ function main(): Promise<void> {
       userConnection.database = USER_DB;
       userConnection.user = USER_NAME;
       userConnection.password = USER_PASS;
-      return actions.buildDb(PGIMAGE, userConnection, DB_FILE_LOCATION);
+      return actions.buildDb(DB_FILE_LOCATION, userConnection, PGIMAGE).then((res) => {
+        console.log(res);
+      }).catch((err) => {
+        console.log(err);
+      });
     default:
       console.log('did not recognize:', command);
       return actions.help();
