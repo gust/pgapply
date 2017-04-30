@@ -11,6 +11,10 @@ export class ConnectionDetails {
 
   constructor() { }
 
+  toString() {
+    return `postgres://${this.user}:${this.password}@${this.host}:${this.port}/${this.database}`;
+  }
+
   toObject() {
     return {
       host: this.host,
@@ -23,9 +27,16 @@ export class ConnectionDetails {
   }
 }
 
-export function getDBConnection(conn: ConnectionDetails) {
+const connCache: {
+  [connString: string]: pgPromise.IDatabase<any>
+} = {};
+
+export function getDBConnection(conn: ConnectionDetails): Promise<pgPromise.IDatabase<any>> {
+  const cacheString = conn.toString();
+  if (connCache[cacheString]) {
+    return Promise.resolve(connCache[cacheString]);
+  }
   // poll socket for readability
-  // TODO: cache the `db` results here so that we do not create duplicate connections
   const db = pgp(conn.toObject());
   let attempt_connect = (depth = 0): Promise<void> => {
     return db.query('select 1;')
@@ -39,7 +50,10 @@ export function getDBConnection(conn: ConnectionDetails) {
       }
     });
   };
-  return attempt_connect().then(() => db);
+  return attempt_connect().then(() => {
+    connCache[cacheString] = db;
+    return db;
+  });
 }
 
 export function teardown() {
