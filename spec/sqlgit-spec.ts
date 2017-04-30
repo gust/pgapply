@@ -1,11 +1,5 @@
+import {failFunc} from "./common";
 import {getMostRecentCommit, getSqlFiles} from "../src/sqlgit";
-
-const failFunc = (err: any) => {
-  console.log(err);
-  expect('this test').toBe('working');
-};
-
-// TODO: test that syntax of monitoring triggers is valid / works
 
 describe('sqlgit file reader', () => {
   it('can read single files', (done) => {

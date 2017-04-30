@@ -1,7 +1,5 @@
 import {execFile} from 'child_process';
-import * as pgPromise from 'pg-promise';
-
-const pgp = pgPromise({});
+import {ConnectionDetails} from './sqlUtil';
 
 const postgres_password = 'password1';
 
@@ -53,29 +51,12 @@ export class DockerDatabase {
     });
   }
 
-  getDBConnection(database = 'postgres', user = 'postgres', password = postgres_password) {
-    // poll socket for readability
-    const db = pgp({
-      host: this.host,
-      port: this.port,
-      database: database,
-      user: user,
-      password: password,
-      application_name: 'deploy'
-    });
-    let attempt_connect = (depth = 0): Promise<void> => {
-      return db.query('select 1;')
-      .catch((err: Error) => {
-        // TODO: only retry if err is ECONNRESET
-        // TODO: add a delay before trying again
-        if (depth < 20000) {
-          return attempt_connect(depth + 1);
-        } else {
-          throw err;
-        }
-      });
-    };
-    return attempt_connect().then(() => db);
+  getConnectionDetails() {
+    const conn = new ConnectionDetails();
+    conn.host = this.host;
+    conn.port = this.port;
+    conn.password = postgres_password;
+    return conn;
   }
 
   destroy(rmContainer = true): Promise<void> {

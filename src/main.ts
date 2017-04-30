@@ -1,10 +1,7 @@
 require('dotenv').config({path: '.deployenv'});
 
-import * as pgPromise from 'pg-promise';
-import {DockerDatabase} from './docker_control';
-import {getMostRecentCommit, installFile} from './sqlgit';
-
-const pgp = pgPromise({});
+import {actions} from './actions';
+import {ConnectionDetails, teardown} from './sqlUtil';
 
 const DB_FILE_LOCATION: string = process.env.DBFILE ? process.env.DBFILE : 'test/db/';
 const USER_DB: string = process.env.DBDATABASE || 'postgres';
@@ -17,64 +14,26 @@ function main(): Promise<void> {
   switch (command) {
     case 'install':
       console.log('installing');
-      const default_db = pgp({
-        host: 'localhost',
-        port: 5432,
-        database: 'postgres',
-        user: 'postgres',
-        password: 'password',
-        application_name: 'deploy'
-      });
-      return default_db.query('CREATE SCHEMA deploy;').then(() => {
+      return actions.install(new ConnectionDetails()).then(() => {
         console.log('complete');
       }).catch((err: Error) => {
         console.log(err);
       });
     case 'build-db':
       console.log('building DB');
-      const dockerDB = new DockerDatabase(PGIMAGE);
-      let commit: GITCommit;
-      return dockerDB.init()
-      .then(() => {
-        return getMostRecentCommit();
-      }).then((_c) => {
-        commit = _c;
-        return dockerDB.getDBConnection();
-      }).then((db) => {
-        if (USER_NAME !== 'postgres') {
-          return db.query("CREATE USER " + USER_NAME + " WITH ENCRYPTED PASSWORD '" + USER_PASS + "' SUPERUSER").then(() => {
-            return db;
-          });
-        }
-      }).then((db) => {
-        if (USER_DB !== 'postgres') {
-          return db.query('CREATE DATABASE ' + USER_DB + " WITH OWNER = " + USER_NAME);
-        }
-      }).then(() => {
-        return dockerDB.getDBConnection(
-          USER_DB,
-          USER_NAME,
-          USER_PASS
-        );
-      }).then((db) => {
-        console.log('building from:', DB_FILE_LOCATION);
-        return installFile(db, commit, DB_FILE_LOCATION, true);
-      }).then((res) => {
-        console.log(res);
-      }).catch((err) => {
-        console.log(err);
-      }).then(() => dockerDB.destroy());
+      const userConnection = new ConnectionDetails();
+      userConnection.database = USER_DB;
+      userConnection.user = USER_NAME;
+      userConnection.password = USER_PASS;
+      return actions.buildDb(PGIMAGE, userConnection, DB_FILE_LOCATION);
     default:
       console.log('did not recognize:', command);
-      console.log('valid actions are:\n' +
-      'install: install into a running postgres instance\n' +
-      'build-db: test build the current db\n');
-      return Promise.resolve(undefined);
+      return actions.help();
   }
 }
 
 function shutdown() {
-  pgp.end();
+  teardown();
 }
 
 main().catch((err: Error) => {
